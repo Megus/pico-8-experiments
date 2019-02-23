@@ -50,19 +50,19 @@ function kefrens()
 			if (xr + 2 > hx) hx = xr + 2
 
 			if x % 2 == 0 then
-				poke(0x4300 + xr, 0x37)
-				poke(0x4301 + xr, 0x73)
+				poke(0x4300 + xr, 0x36)
+				poke(0x4301 + xr, 0x63)
 			else
-				poke(0x4300 + xr, band(peek(0x4300 + xr), 0xf) + 0x70)
+				poke(0x4300 + xr, band(peek(0x4300 + xr), 0xf) + 0x60)
 				poke(0x4301 + xr, 0x33)
-				poke(0x4302 + xr, band(peek(0x4300 + xr), 0xf0) + 0x07)
+				poke(0x4302 + xr, band(peek(0x4300 + xr), 0xf0) + 0x06)
 			end
 
 			-- Roto-zoomer
 			ztx = zsx + i / 2 * zdy
 			zty = zsy + i / 2 * zdx
 			for c = 0, lx - 1 do
-				poke(0x4300 + c, (band(bxor(zty, ztx), 8) == 8) and 0x11 or 0)
+				poke(0x4300 + c, (band(bxor(zty, ztx), 8) == 8) and 0xaa or 0)
 				ztx += zdx
 				zty -= zdy
 			end
@@ -71,7 +71,7 @@ function kefrens()
 			zty -= zdy * (hx - lx + 1)
 
 			for c = hx + 1, 63 do
-				poke(0x4300 + c, (band(bxor(zty, ztx), 8) == 8) and 0x11 or 0)
+				poke(0x4300 + c, (band(bxor(zty, ztx), 8) == 8) and 0xaa or 0)
 				ztx += zdx
 				zty -= zdy
 			end
