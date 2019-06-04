@@ -1,96 +1,141 @@
 pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
+-- PICO-8 init function, we create a coroutine here
 function _init()
-	--music(0)
-	poke(0x5f34, 1)
-
-	-- create fx coroutines
-	ckefrens = cocreate(kefrens)
-
-	frameflag = false
+  cfx = cocreate(fx)
 end
 
+-- We want our effect to run in 60 FPS,
+-- so we use _update60() instead of _update()
 function _update60()
-	frameflag = not frameflag
 end
 
+-- PICO-8 frame draw function
 function _draw()
-	memset(0x6000, 0, 0x2000)
-
-	coresume(ckefrens)
-
-	-- print cpu load
-	--cursor(0, 0)
-	--color(15)
-	--print(stat(1))
+  memset(0x6000, 0, 0x2000)
+  coresume(cfx)
+  -- Uncomment the following lines to see CPU load
+  cursor(0, 0)
+  color(15)
+  print(stat(1))
 end
 
--- fx3: Kefrens bars
-function kefrens()
-	local ph1, ph2, ph3 = 0, 0, 0
-	local zph, zzoom, zpx, zpy = 0, 1, 0, 0
-	local pht1, pht2, pht3, x, xr, lx, hx, ztx, zty, zdx, zdy, zsx, zsy
+-- Raster bars + roto-zoomer
+function fx()
+  -- Raster bars variables
+  local ph1, ph2, ph3 = 0, 0, 0
+  local pht1, pht2, pht3, x
+  -- Roto-zoomer variables
+  local zph, zzoom, zpx, zpy = 0, 1, 0, 0
+  local xr, lx, hx, ztx, zty, zdx, zdy, zsx, zsy
 
-	while true do
-		memset(0x4300, 0, 0x40)
+  while true do
+    -- Clear the line buffer
+    memset(0x7fc0, 0, 0x40)
+    -- Raster bars temporary variables
+    pht1, pht2, pht3 = ph1, ph2, ph3
+    -- Roto-zoomer temporary variables
+    lx = 64
+    hx = 0
+    zdx = cos(zph) * (1 + sin(zzoom) * 0.5)
+    zdy = sin(zph) * (1 + sin(zzoom) * 0.5)
+    zsx = sin(zpx) * 20
+    zsy = sin(zpy) * 20
 
-		pht1, pht2, pht3 = ph1, ph2, ph3
-		lx = 64
-		hx = 0
-		zdx = cos(zph) * (1 + sin(zzoom) * 0.5)
-		zdy = sin(zph) * (1 + sin(zzoom) * 0.5)
-		zsx = sin(zpx) * 20
-		zsy = sin(zpy) * 20
-		for i = 0, 127 do
-			-- Kefrens bars
-			x = flr(63 + sin(pht1) * 24 + sin(pht2) * 12 + sin(pht3) * 8)
-			xr = flr(x / 2)
-			if (xr < lx) lx = xr
-			if (xr + 2 > hx) hx = xr + 2
+    for i = 0, 127 do
+      -- Vertical raster bars
+      x = flr(63 + sin(pht1) * 19 + sin(pht2) * 9 + sin(pht3) * 7)
+      pset(x - 1, 127, 0)
+      pset(x, 127, 5)
+      pset(x + 1, 127, 13)
+      pset(x + 2, 127, 13)
+      pset(x + 3, 127, 5)
+      pht1 += 0.01
+      pht2 += 0.02
+      pht3 += 0.04
 
-			if x % 2 == 0 then
-				poke(0x4300 + xr, 0x36)
-				poke(0x4301 + xr, 0x63)
-			else
-				poke(0x4300 + xr, band(peek(0x4300 + xr), 0xf) + 0x60)
-				poke(0x4301 + xr, 0x33)
-				poke(0x4302 + xr, band(peek(0x4300 + xr), 0xf0) + 0x06)
-			end
+      -- Roto-zoomer
+      xr = flr(x / 2)
+      if (xr < lx) lx = xr
+      if (xr + 2 > hx) hx = xr + 2
+      ztx = zsx + i / 2 * zdy
+      zty = zsy + i / 2 * zdx
+      -- Left part
+      for c = 0, lx - 1 do
+        poke(0x7fc0 + c, (band(bxor(zty, ztx), 8) == 8) and 0xaa or 0)
+        ztx += zdx
+        zty -= zdy
+      end
 
-			-- Roto-zoomer
-			ztx = zsx + i / 2 * zdy
-			zty = zsy + i / 2 * zdx
-			for c = 0, lx - 1 do
-				poke(0x4300 + c, (band(bxor(zty, ztx), 8) == 8) and 0xaa or 0)
-				ztx += zdx
-				zty -= zdy
-			end
+      ztx += zdx * (hx - lx + 1)
+      zty -= zdy * (hx - lx + 1)
 
-			ztx += zdx * (hx - lx + 1)
-			zty -= zdy * (hx - lx + 1)
+      -- Right part
+      for c = hx + 1, 63 do
+        poke(0x7fc0 + c, (band(bxor(zty, ztx), 8) == 8) and 0xaa or 0)
+        ztx += zdx
+        zty -= zdy
+      end
 
-			for c = hx + 1, 63 do
-				poke(0x4300 + c, (band(bxor(zty, ztx), 8) == 8) and 0xaa or 0)
-				ztx += zdx
-				zty -= zdy
-			end
+      -- Clean some artifacts
+      if pget(x + 4, 127) == 10 then pset(x + 4, 127, 0) end
+      if pget(x + 5, 127) == 10 then pset(x + 5, 127, 0) end
 
-			memcpy(0x6000 + i * 64, 0x4300, 0x40)
-			pht1 += 0.01
-			pht2 += 0.02
-			pht3 += 0.04
-		end
+      -- Copy line
+      memcpy(0x6000 + i * 64, 0x7fc0, 0x40)
+    end
 
-		ph1 += 0.002
-		ph2 += 0.004
-		ph3 += 0.03
-		zph += 0.001
-		zpx += 0.002
-		zpy += 0.003
-		zzoom += 0.001
-		yield()
-	end
+    -- Update raster bars variables
+    ph1 += 0.002
+    ph2 += 0.004
+    ph3 += 0.03
+
+    -- Update roto-zoomer variables
+    zph += 0.001
+    zpx += 0.002
+    zpy += 0.003
+    zzoom += 0.001
+
+    yield()
+  end
+end
+
+-- Raster bars only
+function fx_raster()
+  -- Raster bars variables
+  local ph1, ph2, ph3 = 0, 0, 0
+  local pht1, pht2, pht3, x
+
+  while true do
+    -- Clear the line buffer
+    memset(0x7fc0, 0, 0x40)
+    -- Raster bars temporary variables
+    pht1, pht2, pht3 = ph1, ph2, ph3
+
+    for i = 0, 127 do
+      -- Vertical raster bars
+      x = flr(63 + sin(pht1) * 19 + sin(pht2) * 9 + sin(pht3) * 7)
+      pset(x - 1, 127, 0)
+      pset(x, 127, 5)
+      pset(x + 1, 127, 13)
+      pset(x + 2, 127, 13)
+      pset(x + 3, 127, 5)
+      pht1 += 0.01
+      pht2 += 0.02
+      pht3 += 0.04
+
+      -- Copy line
+      memcpy(0x6000 + i * 64, 0x7fc0, 0x40)
+    end
+
+    -- Update raster bars variables
+    ph1 += 0.002
+    ph2 += 0.004
+    ph3 += 0.03
+
+    yield()
+  end
 end
 
 __gfx__
