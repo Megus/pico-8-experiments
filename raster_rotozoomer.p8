@@ -13,7 +13,6 @@ end
 
 -- PICO-8 frame draw function
 function _draw()
-  memset(0x6000, 0, 0x2000)
   coresume(cfx)
   -- Uncomment the following lines to see CPU load
   cursor(0, 0)
@@ -96,43 +95,6 @@ function fx()
     zpx += 0.002
     zpy += 0.003
     zzoom += 0.001
-
-    yield()
-  end
-end
-
--- Raster bars only
-function fx_raster()
-  -- Raster bars variables
-  local ph1, ph2, ph3 = 0, 0, 0
-  local pht1, pht2, pht3, x
-
-  while true do
-    -- Clear the line buffer
-    memset(0x7fc0, 0, 0x40)
-    -- Raster bars temporary variables
-    pht1, pht2, pht3 = ph1, ph2, ph3
-
-    for i = 0, 127 do
-      -- Vertical raster bars
-      x = flr(63 + sin(pht1) * 19 + sin(pht2) * 9 + sin(pht3) * 7)
-      pset(x - 1, 127, 0)
-      pset(x, 127, 5)
-      pset(x + 1, 127, 13)
-      pset(x + 2, 127, 13)
-      pset(x + 3, 127, 5)
-      pht1 += 0.01
-      pht2 += 0.02
-      pht3 += 0.04
-
-      -- Copy line
-      memcpy(0x6000 + i * 64, 0x7fc0, 0x40)
-    end
-
-    -- Update raster bars variables
-    ph1 += 0.002
-    ph2 += 0.004
-    ph3 += 0.03
 
     yield()
   end
