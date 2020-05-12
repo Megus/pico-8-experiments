@@ -6,7 +6,7 @@ function _init()
   cls()
   chanoi = cocreate(hanoi)
   state = -2
-  disks = 4
+  disks = 8
   pegs = {
     {},
     {},
